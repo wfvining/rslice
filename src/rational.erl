@@ -1,11 +1,16 @@
 -module(rational).
--export([new/2, add/2, multiply/2, subtract/2, reciprocal/1, compare/2]).
+-export([new/1, new/2, add/2, multiply/2, subtract/2, reciprocal/1, compare/2]).
 -export_type([rational/0]).
 
 -record(rational, {numerator   :: integer(),
                    denominator :: integer()}).
 
--type rational() :: #rational{}.
+-opaque rational() :: #rational{}.
+
+%% @doc Create a new rational number with denominator 1.
+-spec new(integer()) -> rational().
+new(N) ->
+    new(N, 1).
 
 %% @doc Create a new rational number.
 %%
@@ -43,13 +48,15 @@ subtract(A, B) ->
 %% @doc Reduce a rational number.
 -spec reduce(rational()) -> rational().
 reduce(#rational{numerator = 0}) ->
-    #rational{numerator = 0, denominator = 0};
+    #rational{numerator = 0, denominator = 1};
 reduce(#rational{numerator=Numerator, denominator=Denominator}) ->
     G = gcd(abs(Numerator), abs(Denominator)),
     #rational{numerator=Numerator div G, denominator=Denominator div G}.
 
 %% @doc Return the reciprocal of `X'.
 -spec reciprocal(rational()) -> rational().
+reciprocal(#rational{numerator=0}) ->
+    #rational{numerator=0, denominator=1};
 reciprocal(X) ->
     new(X#rational.denominator, X#rational.numerator).
 

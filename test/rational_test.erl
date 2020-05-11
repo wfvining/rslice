@@ -60,5 +60,21 @@ compare_test_() ->
                                   OneFifth)),
               ?_assertEqual(lt, rational:compare(
                                   rational:multiply(rational:new(1, -1), OneQuarter),
-                                  OneFifth))]
+                                  OneFifth)),
+              ?_assertEqual(gt, rational:compare(
+                                  rational:new(3, 2), rational:new(0))),
+              ?_assertEqual(gt, rational:compare(
+                                  rational:new(3, 2), rational:new(1))),
+              ?_assertEqual(gt, rational:compare(
+                                  rational:new(1, 2), rational:new(0))),
+              ?_assertEqual(lt, rational:compare(
+                                  rational:new(0), rational:new(3, 2))),
+              ?_assertEqual(lt, rational:compare(
+                                  rational:new(0), rational:new(1)))]
      end}.
+
+new_integral_test_() ->
+    [?_assertEqual(rational:new(1, 1), rational:new(1)),
+     ?_assertEqual(rational:new(0, 1), rational:new(0)),
+     ?_assertEqual(rational:new(10, 1), rational:new(10)),
+     ?_assertEqual(rational:new(-100, 1), rational:new(-100))].
