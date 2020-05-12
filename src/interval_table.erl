@@ -25,23 +25,58 @@ gap_size(#table{gaps=Gaps}) ->
 %% @doc Assign `Key' to gaps spanning `Span'. If there are not enough
 %% gaps to cover `Span' then an exception is thrown.
 -spec assign(key(), rational:rational(), table()) -> table().
-assign(_, _, Table=#table{gaps=[]}) ->
-    Table;
-assign(Key, Span, Table=#table{gaps=[G|Gaps]}) ->
+%% assign(_, Span, Table=#table{gaps=[]}) ->
+%%     case rational:compare(Span, rational:new(0)) of
+%%         eq ->
+%%             Table;
+%%         _ ->
+%%             throw({badarg, "span too large"})
+%%     end;
+%% assign(Key, Span, Table=#table{gaps=[G|Gaps]}) ->
+%%     case rational:compare(Span, rational:new(0)) of
+%%         eq -> Table;
+%%         _  ->
+%%             assign(Key, Span, G, Table#table{gaps=Gaps})
+%%     end.
+
+%% assign(Key, Span, Gap, Table=#table{gaps=Gaps, intervals=Intervals}) ->
+%%     case interval:span(Span, Gap) of
+%%         {Gap, empty} ->
+%%             Table#table{intervals=insert_inorder({Gap, Key}, Intervals)};
+%%         {empty, Gap} ->
+%%             Table#table{intervals=insert_inorder({Gap, Key}, Intervals)};
+%%         {Gap, GapRemaining} ->
+%%             assign(Key, rational:subtract(Span, interval:length(Gap)),
+%%                    Table#table{intervals=insert_inorder({Gap, Key}, Intervals),
+%%                                gaps=[GapRemaining|Gaps]})
+%%     end.
+assign(Key, Span, Table=#table{gaps=[]}) ->
     case rational:compare(Span, rational:new(0)) of
-        eq -> Table;
-        _  ->
-            assign(Key, Span, G, Table#table{gaps=Gaps})
+        eq ->
+            Table;
+        gt ->
+            throw({badarg, "Span too large for available gaps."})
+    end;
+assign(Key, Span, Table=#table{gaps=[Gap|Gaps], intervals=Intervals}) ->
+    case rational:compare(Span, rational:new(0)) of
+        eq ->
+            Table;
+        gt ->
+            assign(Key, Span, Gap, Table#table{gaps=Gaps})
     end.
 
 assign(Key, Span, Gap, Table=#table{gaps=Gaps, intervals=Intervals}) ->
     case interval:span(Span, Gap) of
-        {S, GapRemaining} ->
-            Table#table{intervals=insert_inorder({S, Key}, Intervals),
-                        gaps=[GapRemaining|Gaps]};
-        Gap ->
-            Table#table{intervals=insert_inorder({Gap, Key}, Intervals)}
+        {empty, _} ->
+            assign(Key, Span, Table);
+        {G, empty} ->
+            assign(Key, rational:subtract(Span, interval:length(G)),
+                   Table#table{intervals = insert_inorder({G, Key}, Intervals)});
+        {G, Remaining} ->
+            Table#table{intervals = insert_inorder({G, Key}, Intervals),
+                        gaps = [Remaining|Gaps]}
     end.
+
 
 insert_inorder({Gap, Key}, []) ->
     [{Gap, Key}];
@@ -72,9 +107,27 @@ span(Key, IntervalTable) ->
 %% by which to shrink the span assigned to `Key'.
 %% @reutrns the table with gaps.
 -spec shrink(#{key() => rational:rational()}, table()) -> table().
-shrink(Changes, Table) ->
-    % TODO
-    Table.
+shrink(Changes, Table=#table{gaps=Gaps, intervals=Intervals}) ->
+    {NewGaps, NewIntervals} = cut_shift(Changes, Intervals),
+    Table#table{gaps = merge_gaps(NewGaps, Gaps),
+                intervals = NewIntervals}.
+
+merge_gaps(_, _) ->
+    undefined.
+
+cut_shift(Changes, Intervals) ->
+    {_, Gaps, Remaining, _} =
+        lists:foldl(
+          fun({I, Key}, {Changes, Gaps, Remaining, left}) ->
+                  case interval:span(maps:get(Key, Changes), I) of
+                      {Gap, Remaining} ->
+                          ok
+                  end;
+             ({I, Key}, {Changes, Gaps, Remaining, right}) ->
+                  undefined
+          end,
+          {Changes, [], [], right}, Intervals),
+    {Gaps, Remaining}.
 
 %% @doc Look up the key assigned `X'.
 %%

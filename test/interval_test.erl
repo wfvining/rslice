@@ -61,29 +61,24 @@ interval_contains_default_test_() ->
       end}}.
 
 interval_span_too_long_test_() ->
-    [?_assertThrow(
-        {badarg, _},
+    [?_assertEqual(
+        {interval:new(rational:new(0), rational:new(0)), empty},
         interval:span(
           rational:new(1, 2),
           interval:new(rational:new(0), rational:new(0)))),
-     ?_assertThrow(
-        {badarg, _},
+     ?_assertEqual(
+        {interval:new(rational:new(1, 3), rational:new(2, 3)), empty},
         interval:span(
           rational:new(1, 2),
-          interval:new(rational:new(1, 3), rational:new(2, 3)))),
-     ?_assertThrow(
-        {badarg, _},
-        interval:span(
-          rational:new(-1, 2),
-          interval:new(rational:new(0), rational:new(1))))].
+          interval:new(rational:new(1, 3), rational:new(2, 3))))].
 
 interval_span_test_() ->
     I = interval:new(rational:new(0), rational:new(1)),
     [?_assertEqual(
-        {interval:new(rational:new(0), rational:new(0)), I},
+        {empty, I},
         interval:span(rational:new(0), I)),
      ?_assertEqual(
-        I, interval:span(rational:new(1), I)),
+        {I, empty}, interval:span(rational:new(1), I)),
      ?_assertEqual(
         {interval:new(rational:new(0), rational:new(1, 2)),
          interval:new(rational:new(1, 2), rational:new(1))},

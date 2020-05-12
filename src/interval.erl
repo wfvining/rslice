@@ -50,22 +50,25 @@ contains(Value, #interval{left=Left, right=Right}, Closed) ->
 
 %% @doc split an interval into two parts where the first part is at
 %% least `Span' long.
--spec span(rational:rational(), interval()) -> {interval(), interval()} | interval().
+-spec span(rational:rational(), interval()) -> {interval() | empty, interval() | empty}.
 span(Span, I=#interval{left=Left, right=Right}) ->
     Split = rational:add(Left, Span),
     Length = interval:length(I),
-    case interval:contains(Split, I) of
-        true when Length =:= Span ->
-            I;
-        true ->
-            {interval:new(Left, Split), interval:new(Split, Right)};
-        false ->
-            throw(
-              {badarg,
-               io_lib:format(
-                 "Span is outside of interval (Span: ~p, Interval Length: ~p)",
-                 [Span, interval:length(I)])})
+    case rational:compare(Span, Length) of
+        eq ->
+            {I, empty};
+        gt ->
+            {I, empty};
+        lt ->
+            {empty_or(interval:new(Left, Split)),
+             empty_or(interval:new(Split, Right))}
     end.
+
+-spec empty_or(interval()) -> interval() | empty.
+empty_or(#interval{left=Left, right=Right}) when Left =:= Right ->
+    empty;
+empty_or(Interval) ->
+    Interval.
 
 -spec preceeds(interval(), interval()) -> boolean().
 preceeds(#interval{left=LeftA, right=RightA},
