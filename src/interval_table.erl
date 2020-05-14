@@ -25,39 +25,14 @@ gap_size(#table{gaps=Gaps}) ->
 %% @doc Assign `Key' to gaps spanning `Span'. If there are not enough
 %% gaps to cover `Span' then an exception is thrown.
 -spec assign(key(), rational:rational(), table()) -> table().
-%% assign(_, Span, Table=#table{gaps=[]}) ->
-%%     case rational:compare(Span, rational:new(0)) of
-%%         eq ->
-%%             Table;
-%%         _ ->
-%%             throw({badarg, "span too large"})
-%%     end;
-%% assign(Key, Span, Table=#table{gaps=[G|Gaps]}) ->
-%%     case rational:compare(Span, rational:new(0)) of
-%%         eq -> Table;
-%%         _  ->
-%%             assign(Key, Span, G, Table#table{gaps=Gaps})
-%%     end.
-
-%% assign(Key, Span, Gap, Table=#table{gaps=Gaps, intervals=Intervals}) ->
-%%     case interval:span(Span, Gap) of
-%%         {Gap, empty} ->
-%%             Table#table{intervals=insert_inorder({Gap, Key}, Intervals)};
-%%         {empty, Gap} ->
-%%             Table#table{intervals=insert_inorder({Gap, Key}, Intervals)};
-%%         {Gap, GapRemaining} ->
-%%             assign(Key, rational:subtract(Span, interval:length(Gap)),
-%%                    Table#table{intervals=insert_inorder({Gap, Key}, Intervals),
-%%                                gaps=[GapRemaining|Gaps]})
-%%     end.
-assign(Key, Span, Table=#table{gaps=[]}) ->
+assign(_, Span, Table=#table{gaps=[]}) ->
     case rational:compare(Span, rational:new(0)) of
         eq ->
             Table;
         gt ->
             throw({badarg, "Span too large for available gaps."})
     end;
-assign(Key, Span, Table=#table{gaps=[Gap|Gaps], intervals=Intervals}) ->
+assign(Key, Span, Table=#table{gaps=[Gap|Gaps]}) ->
     case rational:compare(Span, rational:new(0)) of
         eq ->
             Table;
@@ -66,7 +41,7 @@ assign(Key, Span, Table=#table{gaps=[Gap|Gaps], intervals=Intervals}) ->
     end.
 
 assign(Key, Span, Gap, Table=#table{gaps=Gaps, intervals=Intervals}) ->
-    case interval:span(Span, Gap) of
+    case interval:split(Span, Gap) of
         {empty, _} ->
             assign(Key, Span, Table);
         {G, empty} ->
@@ -112,21 +87,73 @@ shrink(Changes, Table=#table{gaps=Gaps, intervals=Intervals}) ->
     Table#table{gaps = merge_gaps(NewGaps, Gaps),
                 intervals = NewIntervals}.
 
-merge_gaps(_, _) ->
-    undefined.
+%% merge two lists of gaps combining adjacent gaps into single larger
+%% gaps.
+merge_gaps(Gaps1, Gaps2) ->
+    SortedGaps =
+        lists:merge(fun interval:preceeds/2,
+                    lists:sort(fun interval:preceeds/2, Gaps1),
+                    lists:sort(fun interval:preceeds/2, Gaps2)),
+    lists:foldr(fun(Gap, []) ->
+                        [Gap];
+                   (Gap, [PreceedingGap|Gaps]) ->
+                        case interval:adjacent(Gap, PreceedingGap) of
+                            true ->
+                                [interval:merge(Gap, PreceedingGap) | Gaps];
+                            false ->
+                                [Gap, PreceedingGap | Gaps]
+                        end
+                end,
+                [], SortedGaps).
 
-cut_shift(Changes, Intervals) ->
+
+cut_shift(AssignmentChanges, Intervals) ->
+    SubtractLength =
+        fun(I) ->
+                fun(X) ->
+                        rational:subtract(X, interval:length(I))
+                end
+        end,
     {_, Gaps, Remaining, _} =
         lists:foldl(
           fun({I, Key}, {Changes, Gaps, Remaining, left}) ->
-                  case interval:span(maps:get(Key, Changes), I) of
-                      {Gap, Remaining} ->
-                          ok
+                  Span = maps:get(Key, Changes, rational:new(0)),
+                  case interval:split(Span, I, left) of
+                      {empty, _} ->
+                          {Changes, Gaps, [{I, Key}|Remaining], right};
+                      {Gap, empty} ->
+                          {maps:update_with(
+                             Key, SubtractLength(Gap), rational:new(0), Changes),
+                           [Gap|Gaps],
+                           Remaining,
+                           left};
+                      {Gap, Rem} ->
+                          {maps:update_with(
+                             Key, SubtractLength(Gap), rational:new(0), Changes),
+                           [Gap|Gaps],
+                           [{Rem, Key}|Remaining],
+                           right}
                   end;
              ({I, Key}, {Changes, Gaps, Remaining, right}) ->
-                  undefined
+                  Span = maps:get(Key, Changes, rational:new(0)),
+                  case interval:split(Span, I, right) of
+                      {_, empty} ->
+                          {Changes, Gaps, [{I, Key}|Remaining], right};
+                      {empty, Gap} ->
+                          {maps:update_with(
+                             Key, SubtractLength(Gap), rational:new(0), Changes),
+                           [Gap|Gaps],
+                           Remaining,
+                           left};
+                      {Rem, Gap} ->
+                          {maps:update_with(
+                             Key, SubtractLength(Gap), rational:new(0), Changes),
+                           [Gap|Gaps],
+                           [{Rem, Key}|Remaining],
+                           right}
+                  end
           end,
-          {Changes, [], [], right}, Intervals),
+          {AssignmentChanges, [], [], right}, Intervals),
     {Gaps, Remaining}.
 
 %% @doc Look up the key assigned `X'.

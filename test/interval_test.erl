@@ -60,29 +60,50 @@ interval_contains_default_test_() ->
                           interval:new(rational:new(0), rational:new(0))))]
       end}}.
 
-interval_span_too_long_test_() ->
+interval_split_too_long_test_() ->
     [?_assertEqual(
         {interval:new(rational:new(0), rational:new(0)), empty},
-        interval:span(
+        interval:split(
           rational:new(1, 2),
           interval:new(rational:new(0), rational:new(0)))),
      ?_assertEqual(
         {interval:new(rational:new(1, 3), rational:new(2, 3)), empty},
-        interval:span(
+        interval:split(
           rational:new(1, 2),
           interval:new(rational:new(1, 3), rational:new(2, 3))))].
 
-interval_span_test_() ->
+interval_split_test_() ->
     I = interval:new(rational:new(0), rational:new(1)),
     [?_assertEqual(
         {empty, I},
-        interval:span(rational:new(0), I)),
+        interval:split(rational:new(0), I)),
      ?_assertEqual(
-        {I, empty}, interval:span(rational:new(1), I)),
+        {I, empty}, interval:split(rational:new(1), I)),
      ?_assertEqual(
         {interval:new(rational:new(0), rational:new(1, 2)),
          interval:new(rational:new(1, 2), rational:new(1))},
-        interval:span(rational:new(1, 2), I))].
+        interval:split(rational:new(1, 2), I))].
+
+interval_split_right_test_() ->
+    {"can split intervals from the right",
+     {setup,
+     fun() ->
+             interval:new(rational:new(0), rational:new(1))
+     end,
+     fun(Interval) ->
+             [?_assertEqual(
+                 {empty, Interval},
+                 interval:split(rational:new(1), Interval, right)),
+              ?_assertEqual(
+                 interval:split(rational:new(1, 4), Interval, left),
+                 interval:split(rational:new(3, 4), Interval, right)),
+              ?_assertEqual(
+                 interval:split(rational:new(3, 4), Interval, left),
+                 interval:split(rational:new(1, 4), Interval, right)),
+              ?_assertEqual(
+                 {Interval, empty},
+                 interval:split(rational:new(0), Interval, right))]
+     end}}.
 
 preceeds_test_() ->
     [?_assert(interval:preceeds(
@@ -106,3 +127,44 @@ preceeds_test_() ->
      ?_assertNot(interval:preceeds(
                    interval:new(rational:new(0), rational:new(1)),
                    interval:new(rational:new(1, 2), rational:new(3, 4))))].
+
+adjacent_test_() ->
+    [?_assert(
+        interval:adjacent(
+          interval:new(rational:new(0), rational:new(1, 2)),
+          interval:new(rational:new(1, 2), rational:new(1)))),
+     ?_assert(
+        interval:adjacent(
+          interval:new(rational:new(1, 2), rational:new(1)),
+          interval:new(rational:new(0), rational:new(1, 2)))),
+     ?_assertNot(
+        interval:adjacent(
+          interval:new(rational:new(1, 3), rational:new(2, 3)),
+          interval:new(rational:new(3, 4), rational:new(1))))].
+
+merge_test_() ->
+    [?_assertEqual(
+        interval:new(rational:new(0), rational:new(1)),
+        interval:merge(
+          interval:new(rational:new(0), rational:new(1, 3)),
+          interval:new(rational:new(1, 3), rational:new(1)))),
+     ?_assertEqual(
+        interval:new(rational:new(0), rational:new(1)),
+        interval:merge(
+          interval:new(rational:new(1, 3), rational:new(1)),
+          interval:new(rational:new(0), rational:new(1, 3)))),
+     ?_assertEqual(
+        interval:new(rational:new(1, 3), rational:new(1, 2)),
+        interval:merge(
+          interval:new(rational:new(1, 2), rational:new(1, 2)),
+          interval:new(rational:new(1, 3), rational:new(1, 2)))),
+     ?_assertThrow(
+        {badarg, "intervals must be adjacent"},
+        interval:merge(
+          interval:new(rational:new(1, 2), rational:new(2, 3)),
+          interval:new(rational:new(3, 4), rational:new(1)))),
+     ?_assertThrow(
+        {badarg, "intervals must be adjacent"},
+        interval:merge(
+          interval:new(rational:new(3, 4), rational:new(1)),
+          interval:new(rational:new(1, 2), rational:new(2, 3))))].

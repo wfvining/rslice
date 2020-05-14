@@ -1,5 +1,6 @@
 -module(interval).
--export([new/2, length/1, contains/2, contains/3, span/2, preceeds/2]).
+-export([new/2, length/1, contains/2, contains/3, split/2, split/3,
+         preceeds/2, adjacent/2, merge/2]).
 -export_type([interval/0]).
 
 -record(interval, {left  :: rational:rational(),
@@ -50,11 +51,16 @@ contains(Value, #interval{left=Left, right=Right}, Closed) ->
 
 %% @doc split an interval into two parts where the first part is at
 %% least `Span' long.
--spec span(rational:rational(), interval()) -> {interval() | empty, interval() | empty}.
-span(Span, I=#interval{left=Left, right=Right}) ->
+-spec split(rational:rational(), interval()) -> {interval() | empty, interval() | empty}.
+split(Span, I) ->
+    split(Span, I, left).
+
+%% @doc split the interval from the left or the right.
+-spec split(Span::rational:rational(), Interval::interval(), From::left | right) ->
+                  {interval() | empty, interval() | empty}.
+split(Span, I=#interval{left=Left, right=Right}, left) ->
     Split = rational:add(Left, Span),
-    Length = interval:length(I),
-    case rational:compare(Span, Length) of
+    case rational:compare(Span, interval:length(I)) of
         eq ->
             {I, empty};
         gt ->
@@ -62,7 +68,19 @@ span(Span, I=#interval{left=Left, right=Right}) ->
         lt ->
             {empty_or(interval:new(Left, Split)),
              empty_or(interval:new(Split, Right))}
+    end;
+split(Span, I=#interval{left=Left, right=Right}, right) ->
+    Split = rational:subtract(Right, Span),
+    case rational:compare(Span, interval:length(I)) of
+        eq ->
+            {empty, I};
+        gt ->
+            {empty, I};
+        lt ->
+            {empty_or(interval:new(Left, Split)),
+             empty_or(interval:new(Split, Right))}
     end.
+
 
 -spec empty_or(interval()) -> interval() | empty.
 empty_or(#interval{left=Left, right=Right}) when Left =:= Right ->
@@ -76,3 +94,19 @@ preceeds(#interval{left=LeftA, right=RightA},
     (rational:compare(LeftA, LeftB) == lt)
         andalso ((rational:compare(RightA, LeftB) == lt)
                  orelse (rational:compare(RightA, LeftB) == eq)).
+
+-spec adjacent(interval(), interval()) -> boolean().
+adjacent(#interval{left=LeftA, right=RightA},
+         #interval{left=LeftB, right=RightB}) ->
+    (RightA == LeftB) orelse (RightB == LeftA).
+
+merge(IntervalA=#interval{left=LeftA, right=RightA},
+      IntervalB=#interval{left=LeftB, right=RightB}) ->
+    case adjacent(IntervalA, IntervalB) of
+        true ->
+            #interval{
+               left=rational:minimum(LeftA, LeftB),
+               right=rational:maximum(RightA, RightB)};
+        false ->
+            throw({badarg, "intervals must be adjacent"})
+    end.

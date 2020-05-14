@@ -1,5 +1,6 @@
 -module(rational).
--export([new/1, new/2, add/2, multiply/2, subtract/2, reciprocal/1, compare/2]).
+-export([new/1, new/2, add/2, multiply/2, subtract/2, reciprocal/1,
+         compare/2, minimum/2, maximum/2]).
 -export_type([rational/0]).
 
 -record(rational, {numerator   :: integer(),
@@ -75,6 +76,24 @@ compare(#rational{numerator=NumA, denominator=DenomA},
             eq;
        NumeratorA > NumeratorB ->
             gt
+    end.
+
+%% @doc return the maximum of `A' and `B'
+-spec maximum(rational(), rational()) -> rational().
+maximum(A, B) ->
+    case rational:compare(A, B) of
+        eq -> A;
+        lt -> B;
+        gt -> A
+    end.
+
+%% @doc return the minimum of `A' and `B'
+-spec minimum(rational(), rational()) -> rational().
+minimum(A, B) ->
+    case rational:compare(A, B) of
+        eq -> A;
+        lt -> A;
+        gt -> B
     end.
 
 -spec gcd(integer(), integer()) -> integer().

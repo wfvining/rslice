@@ -70,7 +70,13 @@ compare_test_() ->
               ?_assertEqual(lt, rational:compare(
                                   rational:new(0), rational:new(3, 2))),
               ?_assertEqual(lt, rational:compare(
-                                  rational:new(0), rational:new(1)))]
+                                  rational:new(0), rational:new(1))),
+              ?_assertEqual(lt, rational:compare(
+                                  rational:new(-1, 2), rational:new(0))),
+              ?_assertEqual(lt, rational:compare(
+                                  rational:new(-1, 2), rational:new(-1, 3))),
+              ?_assertEqual(gt, rational:compare(
+                                  rational:new(-1, 3), rational:new(-1, 2)))]
      end}.
 
 new_integral_test_() ->
@@ -78,3 +84,43 @@ new_integral_test_() ->
      ?_assertEqual(rational:new(0, 1), rational:new(0)),
      ?_assertEqual(rational:new(10, 1), rational:new(10)),
      ?_assertEqual(rational:new(-100, 1), rational:new(-100))].
+
+minimum_test_() ->
+    [?_assertEqual(
+        rational:new(1, 2),
+        rational:minimum(rational:new(1, 2), rational:new(1, 2))),
+     ?_assertEqual(
+        rational:new(0),
+        rational:minimum(rational:new(0), rational:new(1))),
+     ?_assertEqual(
+        rational:new(0),
+        rational:minimum(rational:new(1, 4), rational:new(0))),
+     ?_assertEqual(
+        rational:new(-1, 2),
+        rational:minimum(rational:new(-1, 2), rational:new(1, 2))),
+     ?_assertEqual(
+        rational:new(-1, 2),
+        rational:minimum(rational:new(-1, 2), rational:new(-1, 3))),
+     ?_assertEqual(
+        rational:new(-1, 2),
+        rational:minimum(rational:new(-1, 3), rational:new(-1, 2)))].
+
+maximum_test_() ->
+    [?_assertEqual(
+        rational:new(1, 2),
+        rational:maximum(rational:new(1, 2), rational:new(1, 2))),
+     ?_assertEqual(
+        rational:new(1),
+        rational:maximum(rational:new(0), rational:new(1))),
+     ?_assertEqual(
+        rational:new(1, 4),
+        rational:maximum(rational:new(1, 4), rational:new(0))),
+     ?_assertEqual(
+        rational:new(1, 2),
+        rational:maximum(rational:new(-1, 2), rational:new(1, 2))),
+     ?_assertEqual(
+        rational:new(-1, 3),
+        rational:maximum(rational:new(-1, 2), rational:new(-1, 3))),
+     ?_assertEqual(
+        rational:new(-1, 3),
+        rational:maximum(rational:new(-1, 3), rational:new(-1, 2)))].

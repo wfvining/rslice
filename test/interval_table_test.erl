@@ -80,6 +80,115 @@ lookup_two_assigned_test_() ->
       end
      }}.
 
+three_keys_no_gaps() ->
+    Empty = interval_table:new(),
+    interval_table:assign(
+      baz, rational:new(1, 4),
+      interval_table:assign(
+        bar, rational:new(1, 4),
+        interval_table:assign(
+          foo, rational:new(1, 2),
+          Empty))).
+
+shrink_span_test_() ->
+    {"after shrinking the span of all keys is reduced by the total amount shrunk",
+     {setup,
+      fun three_keys_no_gaps/0,
+      fun(Table) ->
+              [{"span only changes for key indicated in the Shrink map",
+                fun() ->
+                        T = interval_table:shrink(#{foo => rational:new(1, 4)}, Table),
+                        [?_assertEqual(
+                            rational:subtract(
+                              interval_table:span(foo, Table), rational:new(1, 4)),
+                            interval_table:span(foo, T)),
+                         ?_assertEqual(
+                            interval_table:span(bar, Table),
+                            interval_table:span(bar, T)),
+                         ?_assertEqual(
+                            interval_table:span(baz, Table),
+                            interval_table:span(baz, T))]
+                end},
+               {"no span changes when no keys are indicated in the map",
+                fun() ->
+                        T = interval_table:shrink(#{}, Table),
+                        [?_assertEqual(
+                            interval_table:span(foo, Table),
+                            interval_table:span(foo, T)),
+                         ?_assertEqual(
+                            interval_table:span(bar, Table),
+                            interval_table:span(bar, T)),
+                         ?_assertEqual(
+                            interval_table:span(baz, Table),
+                            interval_table:span(baz, T))]
+                end},
+               {"multiple keys with changes all have reduced span after shrink",
+                fun() ->
+                        T = interval_table:shrink(
+                              #{foo => rational:new(1, 4),
+                                bar => rational:new(1, 5),
+                                baz => rational:new(1, 6)},
+                              Table),
+                        [?_assertEqual(
+                            rational:new(1, 4),
+                            interval_table:span(foo, T)),
+                         ?_assertEqual(
+                            rational:subtract(
+                              interval_table:span(bar, Table),
+                              rational:new(1, 5)),
+                            interval_table:span(bar, T)),
+                         ?_assertEqual(
+                            rational:subtract(
+                              interval_table:span(baz, Table),
+                              rational:new(1, 6)),
+                            interval_table:span(baz, T))]
+                end},
+               {"reducing a key to zero should eliminate the span for that key",
+                fun() ->
+                        T = interval_table:shrink(
+                              #{foo => rational:new(1, 2),
+                                baz => rational:new(1, 4)}, Table),
+                        [?_assertEqual(rational:new(0), interval_table:span(foo, T)),
+                         ?_assertEqual(rational:new(0), interval_table:span(baz, T)),
+                         ?_assertEqual(interval_table:span(bar, Table),
+                                       interval_table:span(bar, T))]
+                end},
+               {"reducing a key by zero should not change its span.",
+                ?_assertEqual(
+                   interval_table:span(foo, Table),
+                   interval_table:span(
+                     foo,
+                     interval_table:shrink(#{foo => rational:new(0)}, Table)))}]
+      end}}.
+
+shrink_gap_test_() ->
+     {"after shrinking the span of the gaps is equal to the total amount shrunk",
+     {setup,
+      fun three_keys_no_gaps/0,
+      fun(Table) ->
+              [?_assertEqual(rational:new(0),
+                             interval_table:gap_size(
+                               interval_table:shrink(#{}, Table))),
+               ?_assertEqual(rational:new(1),
+                             interval_table:gap_size(
+                               interval_table:shrink(
+                                 #{foo => rational:new(1, 2),
+                                   bar => rational:new(1, 4),
+                                   baz => rational:new(1, 4)},
+                                 Table))),
+               ?_assertEqual(rational:new(1, 4),
+                             interval_table:gap_size(
+                              interval_table:shrink(
+                                #{foo => rational:new(0),
+                                  bar => rational:new(1, 8),
+                                  baz => rational:new(1, 8)},
+                                Table))),
+               ?_assertEqual(rational:new(1, 7),
+                             interval_table:gap_size(
+                               interval_table:shrink(
+                                 #{bar => rational:new(1, 7)}, Table)))]
+      end}}.
+
 assign_gaps(Table) ->
     [?_assertEqual(rational:new(0),
                    interval_table:gap_size(
