@@ -40,8 +40,7 @@ lookup_assigned_test_() ->
      {setup,
       fun() ->
               interval_table:assign(
-                foo,
-                rational:new(1),
+                #{foo => rational:new(1)},
                 interval_table:new())
       end,
       fun(Table) ->
@@ -56,11 +55,9 @@ lookup_two_assigned_test_() ->
      {setup,
       fun() ->
               interval_table:assign(
-                bar,
-                rational:new(1, 2),
+                #{bar => rational:new(1, 2)},
                 interval_table:assign(
-                  foo,
-                  rational:new(1, 2),
+                  #{foo => rational:new(1, 2)},
                   interval_table:new()
                  ))
       end,
@@ -83,11 +80,11 @@ lookup_two_assigned_test_() ->
 three_keys_no_gaps() ->
     Empty = interval_table:new(),
     interval_table:assign(
-      baz, rational:new(1, 4),
+      #{baz => rational:new(1, 4)},
       interval_table:assign(
-        bar, rational:new(1, 4),
+        #{bar => rational:new(1, 4)},
         interval_table:assign(
-          foo, rational:new(1, 2),
+          #{foo => rational:new(1, 2)},
           Empty))).
 
 shrink_span_test_() ->
@@ -192,31 +189,31 @@ shrink_gap_test_() ->
 assign_gaps(Table) ->
     [?_assertEqual(rational:new(0),
                    interval_table:gap_size(
-                     interval_table:assign("a", rational:new(1), Table))),
+                     interval_table:assign(#{"a" => rational:new(1)}, Table))),
      ?_assertEqual(rational:new(3, 4),
                    interval_table:gap_size(
-                     interval_table:assign("a", rational:new(1, 4), Table))),
+                     interval_table:assign(#{"a" => rational:new(1, 4)}, Table))),
      ?_assertEqual(rational:new(1, 4),
                    interval_table:gap_size(
-                     interval_table:assign("a", rational:new(3, 4), Table))),
+                     interval_table:assign(#{"a" => rational:new(3, 4)}, Table))),
      ?_assertEqual(interval_table:gap_size(Table),
                    interval_table:gap_size(
-                     interval_table:assign("a", rational:new(0), Table))),
+                     interval_table:assign(#{"a" => rational:new(0)}, Table))),
      ?_assertEqual(rational:new(0),
                    interval_table:gap_size(
                      interval_table:assign(
-                       "b", rational:new(1, 4),
+                       #{"b" => rational:new(1, 4)},
                        interval_table:assign(
-                         "a", rational:new(3, 4), Table))))].
+                         #{"a" => rational:new(3, 4)}, Table))))].
 
 over_assign_gaps(Table) ->
     [?_assertThrow({badarg, _},
-                   interval_table:assign("foo", rational:new(3, 2), Table)),
+                   interval_table:assign(#{"foo" => rational:new(3, 2)}, Table)),
      ?_assertThrow({badarg, _},
                    interval_table:assign(
-                     "foo", rational:new(1, 2),
+                     #{"foo" => rational:new(1, 2)},
                      interval_table:assign(
-                       "bar", rational:new(3, 4), Table)))].
+                       #{"bar" => rational:new(3, 4)}, Table)))].
 
 lookup_gap(Table) ->
     [?_assertEqual(unassigned,
@@ -228,4 +225,4 @@ lookup_gap(Table) ->
      ?_assertEqual(unassigned,
                    interval_table:lookup(
                      rational:new(3, 4),
-                     interval_table:assign(foo, rational:new(1, 2), Table)))].
+                     interval_table:assign(#{foo => rational:new(1, 2)}, Table)))].

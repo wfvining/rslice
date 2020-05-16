@@ -1,5 +1,5 @@
 -module(interval_table).
--export([new/0, gap_size/1, span/2, assign/3, shrink/2, lookup/2]).
+-export([new/0, gap_size/1, span/2, assign/2, shrink/2, lookup/2]).
 -export_type([table/0]).
 
 -type key() :: any().
@@ -21,12 +21,6 @@ gap_size(#table{gaps=Gaps}) ->
               rational:add(Size, interval:length(Interval))
       end,
       rational:new(0, 1), Gaps).
-
-%% @doc Assign `Key' to gaps spanning `Span'. If there are not enough
-%% gaps to cover `Span' then an exception is thrown.
--spec assign(key(), rational:rational(), table()) -> table().
-assign(Key, Span, Table) ->
-    assign(#{Key => Span}, Table).
 
 %% @doc Assign all keys in `NewKeys' to gaps in `Table'. Uses the
 %% greedy strategy (largest span/largest gap first strategy).
