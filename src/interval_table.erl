@@ -25,33 +25,64 @@ gap_size(#table{gaps=Gaps}) ->
 %% @doc Assign `Key' to gaps spanning `Span'. If there are not enough
 %% gaps to cover `Span' then an exception is thrown.
 -spec assign(key(), rational:rational(), table()) -> table().
-assign(_, Span, Table=#table{gaps=[]}) ->
-    case rational:compare(Span, rational:new(0)) of
-        eq ->
-            Table;
-        gt ->
-            throw({badarg, "Span too large for available gaps."})
+assign(Key, Span, Table) ->
+    assign(#{Key => Span}, Table).
+
+%% @doc Assign all keys in `NewKeys' to gaps in `Table'. Uses the
+%% greedy strategy (largest span/largest gap first strategy).
+-spec assign(NewKeys::#{key() => rational:rational()}, Table::table()) -> table().
+assign(NewKeys, Table) when map_size(NewKeys) =:= 0 ->
+    Table;
+assign(NewKeys, Table=#table{gaps=[]}) ->
+    NewNewKeys = maps:filter(fun(_, Span) -> Span =/= rational:new(0) end, NewKeys),
+    case maps:size(NewNewKeys) of
+        0 -> Table;
+        _ -> throw({badarg, "Span too large for available gaps."})
     end;
-assign(Key, Span, Table=#table{gaps=[Gap|Gaps]}) ->
-    case rational:compare(Span, rational:new(0)) of
-        eq ->
-            Table;
-        gt ->
-            assign(Key, Span, Gap, Table#table{gaps=Gaps})
-    end.
-
-assign(Key, Span, Gap, Table=#table{gaps=Gaps, intervals=Intervals}) ->
-    case interval:split(Span, Gap) of
+assign(NewKeys, Table=#table{gaps=Gaps, intervals=Intervals}) ->
+    {LargestKey, LargestSpan} =
+        maps:fold(
+          fun(Key, Span, Acc={_, LargestSpan}) ->
+                  case rational:compare(Span, LargestSpan) of
+                      eq -> {Key, Span};
+                      lt -> Acc;
+                      gt -> {Key, Span}
+                  end
+          end, {'$no_key$', rational:new(0)}, NewKeys),
+    LargestGap =
+        lists:foldl(
+          fun(Gap, LargestGap) ->
+                  case rational:compare(interval:length(Gap),
+                                        interval:length(LargestGap)) of
+                      eq -> Gap;
+                      lt -> LargestGap;
+                      gt -> Gap
+                  end
+          end, interval:new(rational:new(0), rational:new(0)), Gaps),
+    RemainingGaps = lists:delete(LargestGap, Gaps),
+    case interval:split(LargestSpan, LargestGap, left) of
         {empty, _} ->
-            assign(Key, Span, Table);
-        {G, empty} ->
-            assign(Key, rational:subtract(Span, interval:length(G)),
-                   Table#table{intervals = insert_inorder({G, Key}, Intervals)});
-        {G, Remaining} ->
-            Table#table{intervals = insert_inorder({G, Key}, Intervals),
-                        gaps = [Remaining|Gaps]}
+            % if the key with the largest span has an empty span the
+            % assignment is done
+            Table;
+        {Interval, empty} ->
+            assign(
+              maps:update_with(
+                LargestKey,
+                fun(Span) ->
+                        rational:subtract(Span, interval:length(Interval))
+                end,
+                NewKeys),
+              Table#table{
+                gaps = RemainingGaps,
+                intervals = insert_inorder({Interval, LargestKey}, Intervals)});
+        {Interval, Gap} ->
+            assign(
+              maps:remove(LargestKey, NewKeys),
+              Table#table{
+               gaps = [Gap | RemainingGaps],
+               intervals = insert_inorder({Interval, LargestKey}, Intervals)})
     end.
-
 
 insert_inorder({Gap, Key}, []) ->
     [{Gap, Key}];
