@@ -55,11 +55,9 @@ lookup_two_assigned_test_() ->
      {setup,
       fun() ->
               interval_table:assign(
-                #{bar => rational:new(1, 2)},
-                interval_table:assign(
-                  #{foo => rational:new(1, 2)},
-                  interval_table:new()
-                 ))
+                #{bar => rational:new(1, 2),
+                  foo => rational:new(1, 2)},
+                  interval_table:new())
       end,
       fun(Table) ->
               [?_assertEqual(
@@ -80,12 +78,10 @@ lookup_two_assigned_test_() ->
 three_keys_no_gaps() ->
     Empty = interval_table:new(),
     interval_table:assign(
-      #{baz => rational:new(1, 4)},
-      interval_table:assign(
-        #{bar => rational:new(1, 4)},
-        interval_table:assign(
-          #{foo => rational:new(1, 2)},
-          Empty))).
+      #{baz => rational:new(1, 4),
+        bar => rational:new(1, 4),
+        foo => rational:new(1, 2)},
+      Empty).
 
 shrink_span_test_() ->
     {"after shrinking the span of all keys is reduced by the total amount shrunk",
@@ -202,18 +198,17 @@ assign_gaps(Table) ->
      ?_assertEqual(rational:new(0),
                    interval_table:gap_size(
                      interval_table:assign(
-                       #{"b" => rational:new(1, 4)},
-                       interval_table:assign(
-                         #{"a" => rational:new(3, 4)}, Table))))].
+                       #{"b" => rational:new(1, 4),
+                         "a" => rational:new(3, 4)},
+                       Table)))].
 
 over_assign_gaps(Table) ->
     [?_assertThrow({badarg, _},
                    interval_table:assign(#{"foo" => rational:new(3, 2)}, Table)),
      ?_assertThrow({badarg, _},
                    interval_table:assign(
-                     #{"foo" => rational:new(1, 2)},
-                     interval_table:assign(
-                       #{"bar" => rational:new(3, 4)}, Table)))].
+                     #{"foo" => rational:new(1, 2),
+                       "bar" => rational:new(3, 4)}, Table))].
 
 lookup_gap(Table) ->
     [?_assertEqual(unassigned,
