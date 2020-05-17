@@ -95,6 +95,9 @@ interval_split_right_test_() ->
                  {empty, Interval},
                  interval:split(rational:new(1), Interval, right)),
               ?_assertEqual(
+                 {empty, Interval},
+                 interval:split(rational:new(2), Interval, right)),
+              ?_assertEqual(
                  interval:split(rational:new(1, 4), Interval, left),
                  interval:split(rational:new(3, 4), Interval, right)),
               ?_assertEqual(
