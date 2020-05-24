@@ -1,6 +1,8 @@
 -module(rslice_test).
 -include_lib("eunit/include/eunit.hrl").
 
+-define(NUM_NODES, 20).
+
 join_nodes_test_() ->
     {"Can join nodes to the slice table",
      {setup,
@@ -37,7 +39,7 @@ lookup_two_keys(SliceTable) ->
 
 multiple_owners_test_() ->
     {setup,
-     fun twenty_nodes/0,
+     fun many_nodes/0,
      fun(SliceTable) ->
              [{"correct number of owners are returned",
                fun() ->
@@ -50,23 +52,55 @@ multiple_owners_test_() ->
                end},
               {"crash when more owners are requested than there "
                "are nodes in the slice table",
-               fun() -> ?assert(false) end},
+               fun() ->
+                       ?assertException(
+                          _, _,
+                          rslice:owner("foo", ?NUM_NODES + 1, SliceTable))
+               end},
               {"all returned owners are unique",
-               fun() -> ?assert(false) end},
+               fun() ->
+                       Owners = rslice:owner("foo", 12, SliceTable),
+                       ?assertEqual(length(lists:usort(Owners)), length(Owners))
+               end},
               {"all nodes are returned when the number of owners "
                "requested is same as number of nodes",
-               fun() -> ?assert(false) end},
+               fun() ->
+                       Owners = rslice:owner("foo", ?NUM_NODES, SliceTable),
+                       [?_assertEqual(?NUM_NODES, length(Owners)),
+                        ?_assertEqual(
+                           length(lists:usort(Owners)),
+                           length(Owners))]
+               end},
               {"an empty list is returned when zero owners are requested",
-               fun() -> ?assert(false) end},
+               fun() ->
+                       ?assertEqual([], rslice:owner("foo", 0, SliceTable))
+               end},
               {"decreasing the number of requested owners returns "
                "a prefix of the longer list",
-               fun() -> ?assert(false) end}
+               fun() ->
+                       Owners1 = rslice:owner("foo", 1, SliceTable),
+                       Owners5 = rslice:owner("foo", 5, SliceTable),
+                       Owners10 = rslice:owner("foo", 10, SliceTable),
+                       [?_assert(lists:prefix(Owners1, Owners5)),
+                        ?_assert(lists:prefix(Owners5, Owners10))]
+               end},
+              {"different keys give different owners",
+               fun() ->
+                       OwnersFoo = rslice:owner("foo", 6, SliceTable),
+                       OwnersBar = rslice:owner("bar", 6, SliceTable),
+                       ?assertNotEqual(OwnersFoo, OwnersBar)
+               end},
+              {"Same owners for same key",
+               fun() ->
+                       OwnersFoo = rslice:owner("foo", 12, SliceTable),
+                       ?assertEqual(OwnersFoo, rslice:owner("foo", 12, SliceTable))
+               end}
              ]
      end}.
 
-twenty_nodes() ->
+many_nodes() ->
     rslice:join(
       maps:from_list(
-        [{integer_to_list(X), 100} || X <- lists:seq(0, 10)] ++
-        [{integer_to_list(X), 200} || X <- lists:seq(10, 20)]),
+        [{integer_to_list(X), 100} || X <- lists:seq(0, ?NUM_NODES div 2)] ++
+        [{integer_to_list(X), 200} || X <- lists:seq(?NUM_NODES div 2, ?NUM_NODES)]),
       rslice:new()).
