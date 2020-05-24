@@ -1,5 +1,5 @@
 -module(rslice).
--export([new/0, join/2, owner/2]).
+-export([new/0, join/2, owner/2, owner/3]).
 -export_type([table/0]).
 
 -type node_id() :: any().
@@ -48,13 +48,29 @@ sum_values(Map) ->
               end, 0, Map).
 
 -spec owner(key(), table()) -> node_id().
-owner(Key, #slice{table = IntervalTable}) ->
-    KeyHash = hash(Key),
-    {ok, Node} = interval_table:lookup(KeyHash, IntervalTable),
-    Node.
+owner(Key, SliceTable) ->
+    hd(owner(Key, 1, SliceTable)).
 
--spec hash(key()) -> rational:rational().
-hash(Key) ->
-    HashState = crypto:hash_update(crypto:hash_init(blake2b), Key),
+-spec owner(key(), pos_integer(), table()) -> list(node_id()).
+owner(Key, Count, #slice{table = IntervalTable}) ->
+    owner(Key, Count, IntervalTable, hash_init(), []).
+
+owner(_, 0, _, _, Owners) ->
+    lists:reverse(Owners);
+owner(Key, Count, IntervalTable, HashState, Owners) ->
+    {Hash, NewState} = hash(Key, HashState),
+    {ok, Owner} = interval_table:lookup(Hash, IntervalTable),
+    case lists:member(Owner, Owners) of
+        true ->
+            owner(Key, Count, IntervalTable, NewState, Owners);
+        false ->
+            owner(Key, Count - 1, IntervalTable, NewState, [Owner|Owners])
+    end.
+
+hash_init() ->
+    crypto:hash_init(blake2b).
+
+hash(Key, State) ->
+    HashState = crypto:hash_update(State, Key),
     <<Hash:128, _/binary>> = crypto:hash_final(HashState),
-    rational:new(Hash, ?MAX_HASH).
+    {rational:new(Hash, ?MAX_HASH), HashState}.
