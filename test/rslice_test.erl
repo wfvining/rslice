@@ -101,6 +101,6 @@ multiple_owners_test_() ->
 many_nodes() ->
     rslice:join(
       maps:from_list(
-        [{integer_to_list(X), 100} || X <- lists:seq(0, ?NUM_NODES div 2)] ++
-        [{integer_to_list(X), 200} || X <- lists:seq(?NUM_NODES div 2, ?NUM_NODES)]),
+        [{integer_to_list(X), 100} || X <- lists:seq(0, (?NUM_NODES div 2) - 1)] ++
+        [{integer_to_list(X), 200} || X <- lists:seq(?NUM_NODES div 2, ?NUM_NODES - 1)]),
       rslice:new()).

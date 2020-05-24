@@ -52,7 +52,8 @@ owner(Key, SliceTable) ->
     hd(owner(Key, 1, SliceTable)).
 
 -spec owner(key(), pos_integer(), table()) -> list(node_id()).
-owner(Key, Count, #slice{table = IntervalTable}) ->
+owner(Key, Count, #slice{table = IntervalTable, nodes = Nodes})
+  when Count =< map_size(Nodes) ->
     owner(Key, Count, IntervalTable, hash_init(), []).
 
 owner(_, 0, _, _, Owners) ->
