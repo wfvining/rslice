@@ -43,9 +43,7 @@ join(NewKeys, Table=#slice{nodes=Nodes, table=IntervalTable}) ->
             interval_table:shrink(CapacityChanges, IntervalTable))}.
 
 sum_values(Map) ->
-    maps:fold(fun(_, X, Acc) ->
-                      X + Acc
-              end, 0, Map).
+    lists:sum(maps:values(Map)).
 
 -spec owner(key(), table()) -> node_id().
 owner(Key, SliceTable) ->
