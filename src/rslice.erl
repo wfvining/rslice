@@ -45,14 +45,16 @@ join(NewKeys, Table=#slice{nodes=Nodes, table=IntervalTable}) ->
 sum_values(Map) ->
     lists:sum(maps:values(Map)).
 
+%% @doc Get the node that "owns"  a given key.
 -spec owner(key(), table()) -> node_id().
 owner(Key, SliceTable) ->
     hd(owner(Key, 1, SliceTable)).
 
--spec owner(key(), pos_integer(), table()) -> list(node_id()).
-owner(Key, Count, #slice{table = IntervalTable, nodes = Nodes})
-  when Count =< map_size(Nodes) ->
-    owner(Key, Count, IntervalTable, hash_init(), []).
+%% @doc Get the nodes that "own" a given key.
+-spec owner(Key::key(), NumOwners::pos_integer(), Table::table()) -> list(node_id()).
+owner(Key, NumOwners, #slice{table = IntervalTable, nodes = Nodes})
+  when NumOwners =< map_size(Nodes) ->
+    owner(Key, NumOwners, IntervalTable, hash_init(), []).
 
 owner(_, 0, _, _, Owners) ->
     lists:reverse(Owners);
