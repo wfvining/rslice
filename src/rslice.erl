@@ -14,6 +14,8 @@
 %% 2^128 - 1
 -define(MAX_HASH, 340282366920938463463374607431768211455).
 
+%%%% API Functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 %% @doc Create a new (empty) random slicing table.
 -spec new() -> table().
 new() ->
@@ -42,9 +44,6 @@ join(NewKeys, Table=#slice{nodes=Nodes, table=IntervalTable}) ->
             NewRelativeCapacity,
             interval_table:shrink(CapacityChanges, IntervalTable))}.
 
-sum_values(Map) ->
-    lists:sum(maps:values(Map)).
-
 %% @doc Get the node that "owns"  a given key.
 -spec owner(key(), table()) -> node_id().
 owner(Key, SliceTable) ->
@@ -55,6 +54,11 @@ owner(Key, SliceTable) ->
 owner(Key, NumOwners, #slice{table = IntervalTable, nodes = Nodes})
   when NumOwners =< map_size(Nodes) ->
     owner(Key, NumOwners, IntervalTable, hash_init(), []).
+
+%%%% Internal functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+sum_values(Map) ->
+    lists:sum(maps:values(Map)).
 
 owner(_, 0, _, _, Owners) ->
     lists:reverse(Owners);
