@@ -73,7 +73,7 @@ owner(Key, Count, IntervalTable, HashState, Owners) ->
     end.
 
 hash_init() ->
-    crypto:hash_init(blake2b).
+    crypto:hash_init(sha256).
 
 hash(Key, State) ->
     HashState = crypto:hash_update(State, Key),
