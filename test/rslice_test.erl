@@ -98,6 +98,19 @@ multiple_owners_test_() ->
              ]
      end}.
 
+different_hash_test_() ->
+    {"Can create and use a table with a different hash function",
+     {setup,
+      fun() -> rslice:join(#{foo => 100}, rslice:new(sha)) end,
+      fun(SliceTable) ->
+              [?_assertEqual(foo, rslice:owner("test", SliceTable)),
+               {with, SliceTable, [fun lookup_two_keys/1]}]
+      end}}.
+
+unsupported_hash_function_throws_exception_test_() ->
+    {"Cannot create a slice table with an unsupported hash function",
+     [?_assertThrow({unsupported, _}, rslice:new('not a real hash'))]}.
+
 many_nodes() ->
     rslice:join(
       maps:from_list(

@@ -1,5 +1,5 @@
 -module(rslice).
--export([new/0, join/2, owner/2, owner/3]).
+-export([new/0, new/1, join/2, owner/2, owner/3]).
 -export_type([table/0]).
 
 -type node_id() :: any().
@@ -7,7 +7,8 @@
 -type capacity() :: pos_integer().
 
 -record(slice, {table = interval_table:new() :: interval_table:table(),
-                nodes = #{} :: #{node_id() => capacity()}}).
+                nodes = #{} :: #{node_id() => capacity()},
+                hash = sha256 :: crypto:hash_algorithm()}).
 
 -opaque table() :: #slice{}.
 
@@ -20,6 +21,14 @@
 -spec new() -> table().
 new() ->
     #slice{}.
+
+-spec new(crypto:hash_algorithm()) -> table().
+new(HashAlgorithm) ->
+    Hashes = proplists:get_value(hashs, crypto:supports()),
+    case lists:member(HashAlgorithm, Hashes) of
+        true -> #slice{hash = HashAlgorithm};
+        false -> throw({unsupported, "hash function not supported"})
+    end.
 
 %% @doc Join keys in `Keys' to the slice table.
 -spec join(#{node_id() => capacity()}, table()) -> table().
@@ -51,9 +60,9 @@ owner(Key, SliceTable) ->
 
 %% @doc Get the nodes that "own" a given key.
 -spec owner(Key::key(), NumOwners::pos_integer(), Table::table()) -> list(node_id()).
-owner(Key, NumOwners, #slice{table = IntervalTable, nodes = Nodes})
+owner(Key, NumOwners, #slice{table = IntervalTable, nodes = Nodes, hash = Hash})
   when NumOwners =< map_size(Nodes) ->
-    owner(Key, NumOwners, IntervalTable, hash_init(), []).
+    owner(Key, NumOwners, IntervalTable, hash_init(Hash), []).
 
 %%%% Internal functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -72,8 +81,8 @@ owner(Key, Count, IntervalTable, HashState, Owners) ->
             owner(Key, Count - 1, IntervalTable, NewState, [Owner|Owners])
     end.
 
-hash_init() ->
-    crypto:hash_init(sha256).
+hash_init(Hash) ->
+    crypto:hash_init(Hash).
 
 hash(Key, State) ->
     HashState = crypto:hash_update(State, Key),
