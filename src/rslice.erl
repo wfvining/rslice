@@ -62,7 +62,7 @@ owner(Key, SliceTable) ->
 -spec owner(Key::key(), NumOwners::pos_integer(), Table::table()) -> list(node_id()).
 owner(Key, NumOwners, #slice{table = IntervalTable, nodes = Nodes, hash = Hash})
   when NumOwners =< map_size(Nodes) ->
-    owner(Key, NumOwners, IntervalTable, hash_init(Hash), []).
+    owner(Key, NumOwners, IntervalTable, prf_init(Key, Hash), []).
 
 %%%% Internal functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -71,20 +71,27 @@ sum_values(Map) ->
 
 owner(_, 0, _, _, Owners) ->
     lists:reverse(Owners);
-owner(Key, Count, IntervalTable, HashState, Owners) ->
-    {Hash, NewState} = hash(Key, HashState),
+owner(Key, Count, IntervalTable, PRF, Owners) ->
+    {Hash, PRFNext} = PRF(),
     {ok, Owner} = interval_table:lookup(Hash, IntervalTable),
     case lists:member(Owner, Owners) of
         true ->
-            owner(Key, Count, IntervalTable, NewState, Owners);
+            owner(Key, Count, IntervalTable, PRFNext, Owners);
         false ->
-            owner(Key, Count - 1, IntervalTable, NewState, [Owner|Owners])
+            owner(Key, Count - 1, IntervalTable, PRFNext, [Owner|Owners])
     end.
 
-hash_init(Hash) ->
-    crypto:hash_init(Hash).
+prf_init(Key, Hash) ->
+    <<Seed:128, _/binary>> =
+        crypto:hash_final(
+          crypto:hash_update(
+            crypto:hash_init(Hash), Key)),
+    fun() ->
+            prf_next(rand:seed_s(exsss, Seed))
+    end.
 
-hash(Key, State) ->
-    HashState = crypto:hash_update(State, Key),
-    <<Hash:128, _/binary>> = crypto:hash_final(HashState),
-    {rational:new(Hash, ?MAX_HASH), HashState}.
+prf_next(State) ->
+    {N, NewState} = rand:uniform_s(?MAX_HASH + 1, State),
+    % subtract 1 to include 0 in the possible distribution
+    {rational:new(N - 1, ?MAX_HASH),
+     fun() -> prf_next(NewState) end}.
