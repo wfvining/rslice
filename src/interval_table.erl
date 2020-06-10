@@ -175,7 +175,7 @@ cut_shift(AssignmentChanges, Intervals) ->
                              Key, SubtractLength(Gap), rational:new(0), Changes),
                            [Gap|Gaps],
                            [{Rem, Key}|Remaining],
-                           right}
+                           left}
                   end
           end,
           {AssignmentChanges, [], [], right}, Intervals),
